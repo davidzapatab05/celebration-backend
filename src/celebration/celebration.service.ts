@@ -11,43 +11,43 @@ import { Occasion } from '../occasion.entity';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import { join } from 'path';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { v2 as cloudinary } from 'cloudinary';
+import * as streamifier from 'streamifier';
 
 @Injectable()
 export class CelebrationService {
-  private s3Client: S3Client;
-  private useR2 = false;
-
   constructor(
     @InjectRepository(CelebrationRequest)
     private celebrationRepository: Repository<CelebrationRequest>,
     @InjectRepository(Occasion)
     private occasionRepository: Repository<Occasion>,
   ) {
-    if (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID) {
-      this.useR2 = true;
-      this.s3Client = new S3Client({
-        region: 'auto',
-        endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-        credentials: {
-          accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
-        },
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
       });
     }
   }
 
   async uploadImage(buffer: Buffer, filename: string): Promise<string> {
-    if (this.useR2) {
-      await this.s3Client.send(
-        new PutObjectCommand({
-          Bucket: process.env.R2_BUCKET_NAME,
-          Key: filename,
-          Body: buffer,
-          ContentType: 'image/webp',
-        }),
-      );
-      return `${process.env.R2_PUBLIC_URL}/${filename}`;
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'celebration',
+            public_id: filename.replace(/\.[^/.]+$/, ''), // Remove extension
+            resource_type: 'image',
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            if (!result) return reject(new Error('Cloudinary upload failed'));
+            resolve(result.secure_url);
+          },
+        );
+        streamifier.createReadStream(buffer).pipe(uploadStream);
+      });
     } else {
       // Local Fallback
       const uploadDir = join(process.cwd(), 'uploads');
@@ -66,15 +66,19 @@ export class CelebrationService {
       const filename = imagePath.split('/').pop();
       if (!filename) return;
 
-      if (this.useR2 && imagePath.startsWith('http')) {
-        await this.s3Client.send(
-          new DeleteObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME,
-            Key: filename,
-          }),
-        );
+      if (process.env.CLOUDINARY_CLOUD_NAME && imagePath.includes('cloudinary')) {
+
+        const parts = imagePath.split('/');
+        const filenameWithExt = parts[parts.length - 1]; // abc.webp
+        const folder = parts[parts.length - 2]; // celebration
+
+        if (folder === 'celebration') {
+          const publicId = `${folder}/${filenameWithExt.split('.')[0]}`;
+          await cloudinary.uploader.destroy(publicId);
+        }
       } else {
         const uploadDir = join(__dirname, '..', '..', 'uploads');
+        // Legacy local delete logic just in case
         const filepath = join(uploadDir, filename);
         if (fs.existsSync(filepath)) {
           fs.unlinkSync(filepath);
