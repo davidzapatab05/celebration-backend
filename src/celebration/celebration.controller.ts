@@ -56,21 +56,13 @@ export class CelebrationController {
     if (file) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const filename = `celebration-${uniqueSuffix}.webp`;
-      const uploadDir = join(process.cwd(), 'uploads');
 
-      // Ensure uploads directory exists
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      const filepath = join(uploadDir, filename);
-
-      await sharp(file.buffer)
+      const buffer = await sharp(file.buffer)
         .resize(800, 800, { fit: 'inside', withoutEnlargement: true }) // Optimize size
         .webp({ quality: 80 }) // Convert to WebP
-        .toFile(filepath);
+        .toBuffer();
 
-      imagePath = `/uploads/${filename}`;
+      imagePath = await this.celebrationService.uploadImage(buffer, filename);
     }
 
     return this.celebrationService.create(req.user, { ...body, imagePath });
@@ -177,20 +169,13 @@ export class CelebrationController {
     if (file) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const filename = `celebration-edit-${uniqueSuffix}.webp`;
-      const uploadDir = join(process.cwd(), 'uploads');
 
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      const filepath = join(uploadDir, filename);
-
-      await sharp(file.buffer)
+      const buffer = await sharp(file.buffer)
         .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 80 })
-        .toFile(filepath);
+        .toBuffer();
 
-      imagePath = `/uploads/${filename}`;
+      imagePath = await this.celebrationService.uploadImage(buffer, filename);
     }
 
     const deleteImg = body.deleteImage === 'true';

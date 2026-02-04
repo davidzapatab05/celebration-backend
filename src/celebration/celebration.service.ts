@@ -11,26 +11,74 @@ import { Occasion } from '../occasion.entity';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import { join } from 'path';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 @Injectable()
 export class CelebrationService {
+  private s3Client: S3Client;
+  private useR2 = false;
+
   constructor(
     @InjectRepository(CelebrationRequest)
     private celebrationRepository: Repository<CelebrationRequest>,
     @InjectRepository(Occasion)
     private occasionRepository: Repository<Occasion>,
-  ) { }
+  ) {
+    if (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID) {
+      this.useR2 = true;
+      this.s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+        },
+      });
+    }
+  }
 
-  private deleteFile(imagePath: string) {
+  async uploadImage(buffer: Buffer, filename: string): Promise<string> {
+    if (this.useR2) {
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME,
+          Key: filename,
+          Body: buffer,
+          ContentType: 'image/webp',
+        }),
+      );
+      return `${process.env.R2_PUBLIC_URL}/${filename}`;
+    } else {
+      // Local Fallback
+      const uploadDir = join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const filepath = join(uploadDir, filename);
+      fs.writeFileSync(filepath, buffer);
+      return `/uploads/${filename}`;
+    }
+  }
+
+  private async deleteFile(imagePath: string) {
     if (!imagePath) return;
     try {
       const filename = imagePath.split('/').pop();
       if (!filename) return;
 
-      const uploadDir = join(__dirname, '..', '..', 'uploads');
-      const filepath = join(uploadDir, filename);
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
+      if (this.useR2 && imagePath.startsWith('http')) {
+        await this.s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: filename,
+          }),
+        );
+      } else {
+        const uploadDir = join(__dirname, '..', '..', 'uploads');
+        const filepath = join(uploadDir, filename);
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+        }
       }
     } catch (error) {
       console.error('Error deleting file:', error);
