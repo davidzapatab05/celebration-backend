@@ -46,7 +46,7 @@ async function seed() {
     const occasions = [
       {
         name: 'San Valentín',
-        slug: 'san-valentin',
+        slug: 'celebration',
         icon: 'heart',
         primaryColor: '#ec4899',
         secondaryColor: '#ef4444',
