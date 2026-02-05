@@ -25,7 +25,10 @@ import { OccasionsModule } from './occasions/occasions.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: configService.get<string>('NODE_ENV') !== 'production', // Disable in production
+        ssl: configService.get<string>('DB_SSL') === 'true' ? {
+          rejectUnauthorized: true,
+        } : undefined,
       }),
       inject: [ConfigService],
     }),

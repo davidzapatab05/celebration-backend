@@ -8,7 +8,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async validateGoogleUser(details: {
     email: string;
@@ -18,12 +18,11 @@ export class AuthService {
   }): Promise<User> {
     const user = await this.usersService.findByEmail(details.email);
     if (user) {
-      if (!user.googleId) {
-        await this.usersService.update(user.id, {
-          googleId: details.googleId,
-          avatar: details.picture,
-        });
-      }
+      await this.usersService.update(user.id, {
+        googleId: details.googleId,
+        avatar: details.picture,
+        name: details.name,
+      });
       return user;
     }
     return this.usersService.create({
