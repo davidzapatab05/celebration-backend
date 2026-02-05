@@ -42,7 +42,7 @@ import { OccasionsModule } from './occasions/occasions.module';
           keepAliveInitialDelay: 10000, // Send keepalive every 10s
         },
         maxQueryExecutionTime: 10000, // Increased from 5s to 10s
-        logging: configService.get<string>('NODE_ENV') !== 'production' ? ['query', 'error', 'warn'] : false,
+        logging: configService.get<string>('NODE_ENV') !== 'production' ? ['error', 'warn'] : false,
       }),
       inject: [ConfigService],
     }),
