@@ -29,6 +29,20 @@ import { OccasionsModule } from './occasions/occasions.module';
         ssl: configService.get<string>('DB_SSL') === 'true' ? {
           rejectUnauthorized: true,
         } : undefined,
+        keepConnectionAlive: true,
+        poolSize: 10,
+        extra: {
+          connectionLimit: 10,
+          connectTimeout: 30000, // Reduced from 60s to 30s
+          acquireTimeout: 30000,
+          timeout: 30000,
+          waitForConnections: true,
+          queueLimit: 0,
+          enableKeepAlive: true,
+          keepAliveInitialDelay: 10000, // Send keepalive every 10s
+        },
+        maxQueryExecutionTime: 10000, // Increased from 5s to 10s
+        logging: configService.get<string>('NODE_ENV') !== 'production' ? ['query', 'error', 'warn'] : false,
       }),
       inject: [ConfigService],
     }),

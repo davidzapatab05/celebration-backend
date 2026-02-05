@@ -48,6 +48,7 @@ export class CelebrationController {
       message?: string;
       affectionLevel?: string;
       occasionId?: string;
+      extraData?: any;
     },
     @UploadedFile() file: Express.Multer.File,
   ) {
@@ -65,7 +66,13 @@ export class CelebrationController {
       imagePath = await this.celebrationService.uploadImage(buffer, filename);
     }
 
-    return this.celebrationService.create(req.user, { ...body, imagePath });
+    const extraData = body.extraData ? JSON.parse(body.extraData) : undefined;
+
+    return this.celebrationService.create(req.user, {
+      ...body,
+      imagePath,
+      extraData,
+    });
   }
 
   @Get('admin/all')
@@ -120,11 +127,7 @@ export class CelebrationController {
     return this.celebrationService.updateResponse(slug, body.response);
   }
 
-  @Delete(':id/delete') // Keeping the suffix as per frontend logic, but using Delete method. Wait, frontend uses POST. Let's align. Frontend uses POST request.
-  @UseGuards(AuthGuard('jwt'))
-  async deleteRequest(@Req() req: RequestWithUser, @Param('id') id: string) {
-    return this.celebrationService.delete(id, req.user);
-  }
+
 
   // Changing to POST for delete to match frontend unless I change frontend to DELETE.
   // Frontend code: await axios.post(`${backendUrl}/celebration/${id}/delete`...

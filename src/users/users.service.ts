@@ -15,7 +15,7 @@ export class UsersService implements OnModuleInit {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private celebrationService: CelebrationService,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     await this.seedAdmin();
@@ -77,15 +77,19 @@ export class UsersService implements OnModuleInit {
   }
 
   async findAll(): Promise<User[]> {
-    return this.usersRepository
+    const users = await this.usersRepository
       .createQueryBuilder('user')
-      .loadRelationCountAndMap(
-        'user.requestsCount',
-        'user.celebration_requests',
-        'requests',
-      )
+      .leftJoin('user.celebration_requests', 'requests')
+      .addSelect('COUNT(requests.id)', 'user_requestsCount')
+      .groupBy('user.id')
       .orderBy('user.createdAt', 'DESC')
-      .getMany();
+      .getRawAndEntities();
+
+    // Map the count to each user entity
+    return users.entities.map((user, index) => {
+      (user as any).requestsCount = parseInt(users.raw[index].user_requestsCount) || 0;
+      return user;
+    });
   }
 
   async updateStatus(

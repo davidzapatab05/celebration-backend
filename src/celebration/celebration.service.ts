@@ -97,6 +97,7 @@ export class CelebrationService {
       affectionLevel?: string;
       imagePath?: string | null;
       occasionId?: string;
+      extraData?: Record<string, any>;
     },
   ): Promise<CelebrationRequest> {
     // Admins have no limits
@@ -128,6 +129,7 @@ export class CelebrationService {
       imagePath: data.imagePath || null,
       occasion: occasion || undefined,
       slug,
+      extraData: data.extraData,
     });
     return this.celebrationRepository.save(request);
   }
@@ -166,11 +168,12 @@ export class CelebrationService {
   }
 
   async findAllByUserAdmin(userId: string): Promise<CelebrationRequest[]> {
-    return this.celebrationRepository.find({
-      where: { user: { id: userId } },
-      relations: ['occasion'],
-      order: { createdAt: 'DESC' },
-    });
+    return this.celebrationRepository
+      .createQueryBuilder('request')
+      .leftJoinAndSelect('request.occasion', 'occasion')
+      .where('request.userId = :userId', { userId })
+      .orderBy('request.createdAt', 'DESC')
+      .getMany();
   }
 
   async deleteByUserId(userId: string): Promise<void> {
