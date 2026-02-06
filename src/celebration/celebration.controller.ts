@@ -164,6 +164,7 @@ export class CelebrationController {
       occasionId?: string;
       deleteImage?: string;
       extraData?: any;
+      response?: string;
     },
     @UploadedFile() file: Express.Multer.File,
   ) {
@@ -193,6 +194,7 @@ export class CelebrationController {
         deleteImage: deleteImg,
         extraData: body.extraData ? JSON.parse(body.extraData) : undefined,
         occasionId: body.occasionId,
+        response: body.response,
       },
       req.user,
     );

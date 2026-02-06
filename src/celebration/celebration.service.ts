@@ -225,6 +225,7 @@ export class CelebrationService {
       occasionId?: string;
       deleteImage?: boolean;
       extraData?: any;
+      response?: string;
     },
     user: User,
   ): Promise<CelebrationRequest> {
@@ -256,6 +257,10 @@ export class CelebrationService {
         this.deleteFile(request.imagePath);
       }
       request.imagePath = null;
+    }
+
+    if (updates.response) {
+      request.response = updates.response;
     }
 
     if (updates.extraData) {
